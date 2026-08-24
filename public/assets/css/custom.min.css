@@ -1,0 +1,4 @@
+[data-layout-mode="dark"] #page-topbar {
+    background-color: #1a1d21 !important; /* Warna gelap standar Velzone */
+    border-bottom-color: #212529 !important;
+}
