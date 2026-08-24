@@ -11,6 +11,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
+Route::redirect('/', '/login');
+
 // =============================================
 // Auth Routes (Guest)
 // =============================================
