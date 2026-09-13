@@ -66,8 +66,9 @@
                     <h6 class="text-muted mb-3 mt-4">Email Tujuan</h6>
                     <div class="mb-3">
                         <label for="company_email" class="form-label">Email HRD / Perekrut</label>
-                        <input type="email" class="form-control" id="company_email" name="company_email"
-                            value="{{ old('company_email') }}" placeholder="hrd@contoh.com" required>
+                        <input type="text" class="form-control" id="company_email" name="company_email"
+                            value="{{ old('company_email') }}" placeholder="hrd@pt.com, user@pt.com" required>
+                        <small class="text-muted d-block mt-1">Bisa memasukkan lebih dari 1 email yang dipisahkan tanda koma (contoh: <code>hrd@pt.com, user@pt.com</code>).</small>
                     </div>
 
                     <!-- Subjek -->

@@ -76,8 +76,28 @@ class SendScheduledEmails extends Command
                     $subject
                 );
 
-                // Kirim email
-                Mail::to($app->recipient_email)->send(new JobApplicationMail($app, $subject, $body));
+                // Memecah dan membersihkan daftar email
+                $recipients = array_filter(array_map('trim', explode(',', $app->company_email)));
+
+                // Path lampiran
+                $attachmentPath = null;
+                if ($app->attachment_document_id && $app->attachmentDocument) {
+                    $attachmentPath = \Illuminate\Support\Facades\Storage::disk('private')->path($app->attachmentDocument->file_path);
+                }
+
+                Mail::html(nl2br(e($body)), function ($message) use ($app, $recipients, $subject, $attachmentPath) {
+                    $message->to($recipients)
+                            ->subject($subject);
+
+                    if ($attachmentPath && file_exists($attachmentPath)) {
+                        $docName = $app->attachmentDocument->name ?? $app->attachmentDocument->title ?? $app->attachmentDocument->file_name;
+                        $asName = str_ends_with(strtolower($docName), '.pdf') ? $docName : $docName . '.pdf';
+                        $message->attach($attachmentPath, [
+                            'as' => $asName,
+                            'mime' => 'application/pdf',
+                        ]);
+                    }
+                });
 
                 // Update status menjadi sent
                 $app->update([
@@ -85,8 +105,8 @@ class SendScheduledEmails extends Command
                     'error_message' => null,
                 ]);
 
-                $this->info("[+] Email berhasil dikirim ke: {$app->recipient_email} menggunakan SMTP milik {$app->user->email}");
-                Log::info("Scheduled email sent successfully: JobApplication ID {$app->id} to {$app->recipient_email}");
+                $this->info("[+] Email berhasil dikirim ke: {$app->company_email} menggunakan SMTP milik {$app->user->email}");
+                Log::info("Scheduled email sent successfully: JobApplication ID {$app->id} to {$app->company_email}");
 
             } catch (\Throwable $e) {
                 // Update status menjadi failed
@@ -95,7 +115,7 @@ class SendScheduledEmails extends Command
                     'error_message' => $e->getMessage(),
                 ]);
 
-                $this->error("[-] Gagal kirim ke {$app->recipient_email}: " . $e->getMessage());
+                $this->error("[-] Gagal kirim ke {$app->company_email}: " . $e->getMessage());
                 Log::error("Gagal kirim email ID {$app->id}: " . $e->getMessage());
 
                 // Lanjutkan ke antrean berikutnya

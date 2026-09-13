@@ -19,6 +19,16 @@ class JobApplication extends Model
         'error_message',
     ];
 
+    public function getCompanyEmailAttribute(): string
+    {
+        return $this->recipient_email ?? '';
+    }
+
+    public function setCompanyEmailAttribute($value): void
+    {
+        $this->attributes['recipient_email'] = $value;
+    }
+
     protected function casts(): array
     {
         return [

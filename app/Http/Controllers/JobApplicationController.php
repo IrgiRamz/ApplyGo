@@ -63,16 +63,27 @@ class JobApplicationController extends Controller
         $request->validate([
             'company_name'   => 'required|string|max:255',
             'job_position'   => 'required|string|max:255',
-            'company_email'  => 'required|email',
+            'company_email'  => 'required|string',
             'subject'        => 'required|string|max:255',
             'template_id'    => 'required|exists:email_templates,id',
             'attachment_id'  => 'required|exists:attachment_documents,id',
             'send_type'      => 'required|in:now,scheduled',
             'scheduled_at'   => 'nullable|required_if:send_type,scheduled|date|after:now',
         ], [
+            'company_email.required'   => 'Alamat email perusahaan wajib diisi.',
             'scheduled_at.required_if' => 'Waktu jadwal pengiriman wajib diisi jika memilih opsi jadwalkan.',
             'scheduled_at.after'       => 'Waktu jadwal pengiriman harus lebih dari waktu saat ini.',
         ]);
+
+        $emails = array_filter(array_map('trim', explode(',', $request->company_email)));
+        if (empty($emails)) {
+            return back()->withInput()->with('error', 'Alamat email perusahaan wajib diisi.');
+        }
+        foreach ($emails as $email) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return back()->withInput()->with('error', "Format email '{$email}' tidak valid.");
+            }
+        }
 
         // Cek apakah SMTP sudah dikonfigurasi
         $emailSetting = auth()->user()->emailSetting;
@@ -92,7 +103,7 @@ class JobApplicationController extends Controller
         $jobApplication = JobApplication::create([
             'user_id' => auth()->id(),
             'attachment_document_id' => $request->attachment_id,
-            'recipient_email' => $request->company_email,
+            'recipient_email' => implode(', ', $emails),
             'subject' => $request->subject,
             'company_name' => $request->company_name,
             'position' => $request->job_position,
@@ -139,10 +150,28 @@ class JobApplicationController extends Controller
                 $jobApplication->subject
             );
 
-            // Kirim email
-            Mail::to($jobApplication->recipient_email)->send(
-                new JobApplicationMail($jobApplication, $subject, $body)
-            );
+            // Memecah dan membersihkan daftar email
+            $recipients = array_filter(array_map('trim', explode(',', $jobApplication->company_email)));
+
+            // Path lampiran
+            $attachmentPath = null;
+            if ($jobApplication->attachment_document_id && $jobApplication->attachmentDocument) {
+                $attachmentPath = \Illuminate\Support\Facades\Storage::disk('private')->path($jobApplication->attachmentDocument->file_path);
+            }
+
+            Mail::html(nl2br(e($body)), function ($message) use ($jobApplication, $recipients, $subject, $attachmentPath) {
+                $message->to($recipients)
+                        ->subject($subject);
+
+                if ($attachmentPath && file_exists($attachmentPath)) {
+                    $docName = $jobApplication->attachmentDocument->name ?? $jobApplication->attachmentDocument->title ?? $jobApplication->attachmentDocument->file_name;
+                    $asName = str_ends_with(strtolower($docName), '.pdf') ? $docName : $docName . '.pdf';
+                    $message->attach($attachmentPath, [
+                        'as' => $asName,
+                        'mime' => 'application/pdf',
+                    ]);
+                }
+            });
 
             // Update status
             $jobApplication->update([
@@ -151,7 +180,7 @@ class JobApplicationController extends Controller
             ]);
 
             return redirect()->route('job-applications.index')
-                ->with('success', 'Email lamaran berhasil dikirim ke ' . $jobApplication->recipient_email);
+                ->with('success', 'Email lamaran berhasil dikirim ke ' . $jobApplication->company_email);
 
         } catch (\Throwable $e) {
             $jobApplication->update([
@@ -234,10 +263,28 @@ class JobApplicationController extends Controller
                 $application->subject
             );
 
-            // Kirim email
-            Mail::to($application->recipient_email)->send(
-                new JobApplicationMail($application, $subject, $body)
-            );
+            // Memecah dan membersihkan daftar email
+            $recipients = array_filter(array_map('trim', explode(',', $application->company_email)));
+
+            // Path lampiran
+            $attachmentPath = null;
+            if ($application->attachment_document_id && $application->attachmentDocument) {
+                $attachmentPath = \Illuminate\Support\Facades\Storage::disk('private')->path($application->attachmentDocument->file_path);
+            }
+
+            Mail::html(nl2br(e($body)), function ($message) use ($application, $recipients, $subject, $attachmentPath) {
+                $message->to($recipients)
+                        ->subject($subject);
+
+                if ($attachmentPath && file_exists($attachmentPath)) {
+                    $docName = $application->attachmentDocument->name ?? $application->attachmentDocument->title ?? $application->attachmentDocument->file_name;
+                    $asName = str_ends_with(strtolower($docName), '.pdf') ? $docName : $docName . '.pdf';
+                    $message->attach($attachmentPath, [
+                        'as' => $asName,
+                        'mime' => 'application/pdf',
+                    ]);
+                }
+            });
 
             $application->update([
                 'status' => 'sent',
