@@ -61,18 +61,18 @@ class JobApplicationController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'company_name'   => 'required|string|max:255',
-            'job_position'   => 'required|string|max:255',
-            'company_email'  => 'required|string',
-            'subject'        => 'required|string|max:255',
-            'template_id'    => 'required|exists:email_templates,id',
-            'attachment_id'  => 'required|exists:attachment_documents,id',
-            'send_type'      => 'required|in:now,scheduled',
-            'scheduled_at'   => 'nullable|required_if:send_type,scheduled|date|after:now',
+            'company_name' => 'required|string|max:255',
+            'job_position' => 'required|string|max:255',
+            'company_email' => 'required|string',
+            'subject' => 'required|string|max:255',
+            'template_id' => 'required|exists:email_templates,id',
+            'attachment_id' => 'required|exists:attachment_documents,id',
+            'send_type' => 'required|in:now,scheduled',
+            'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
         ], [
-            'company_email.required'   => 'Alamat email perusahaan wajib diisi.',
+            'company_email.required' => 'Alamat email perusahaan wajib diisi.',
             'scheduled_at.required_if' => 'Waktu jadwal pengiriman wajib diisi jika memilih opsi jadwalkan.',
-            'scheduled_at.after'       => 'Waktu jadwal pengiriman harus lebih dari waktu saat ini.',
+            'scheduled_at.after' => 'Waktu jadwal pengiriman harus lebih dari waktu saat ini.',
         ]);
 
         $emails = array_filter(array_map('trim', explode(',', $request->company_email)));
@@ -116,7 +116,8 @@ class JobApplicationController extends Controller
             return $this->sendNow($jobApplication, $request->template_id);
         }
 
-        return redirect()->route('job-applications.index')->with('success', 'Lamaran berhasil dijadwalkan.');
+        return redirect()->route('job-applications.create')
+            ->with('success', 'Lamaran pekerjaan berhasil dijadwalkan!');
     }
 
     /**
@@ -161,7 +162,7 @@ class JobApplicationController extends Controller
 
             Mail::html(nl2br(e($body)), function ($message) use ($jobApplication, $recipients, $subject, $attachmentPath) {
                 $message->to($recipients)
-                        ->subject($subject);
+                    ->subject($subject);
 
                 if ($attachmentPath && file_exists($attachmentPath)) {
                     $docName = $jobApplication->attachmentDocument->name ?? $jobApplication->attachmentDocument->title ?? $jobApplication->attachmentDocument->file_name;
@@ -179,8 +180,8 @@ class JobApplicationController extends Controller
                 'error_message' => null,
             ]);
 
-            return redirect()->route('job-applications.index')
-                ->with('success', 'Email lamaran berhasil dikirim ke ' . $jobApplication->company_email);
+            return redirect()->route('job-applications.create')
+                ->with('success', 'Lamaran pekerjaan berhasil dikirim ke ' . $jobApplication->company_name . '!');
 
         } catch (\Throwable $e) {
             $jobApplication->update([
@@ -274,7 +275,7 @@ class JobApplicationController extends Controller
 
             Mail::html(nl2br(e($body)), function ($message) use ($application, $recipients, $subject, $attachmentPath) {
                 $message->to($recipients)
-                        ->subject($subject);
+                    ->subject($subject);
 
                 if ($attachmentPath && file_exists($attachmentPath)) {
                     $docName = $application->attachmentDocument->name ?? $application->attachmentDocument->title ?? $application->attachmentDocument->file_name;
