@@ -5,6 +5,7 @@ use App\Http\Controllers\EmailSettingController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\AttachmentDocumentController;
 use App\Http\Controllers\JobApplicationController;
+use App\Http\Controllers\CompanyUrlController;
 use App\Http\Controllers\CoverLetterController;
 use App\Http\Controllers\DocumentTemplateController;
 use App\Http\Controllers\UserController;
@@ -62,6 +63,9 @@ Route::middleware('auth')->group(function () {
     // Cover Letter Generator
     Route::get('/cover-letter/generate', [CoverLetterController::class, 'showForm'])->name('cover-letter.form');
     Route::post('/cover-letter/generate', [CoverLetterController::class, 'generate'])->name('cover-letter.generate');
+
+    // Company Career URLs (Portal Karir Perusahaan)
+    Route::resource('company-urls', CompanyUrlController::class)->except(['create', 'show', 'edit']);
 
     // =============================================
     // Admin Exclusive Routes (Proteksi Middleware Kustom 'admin')

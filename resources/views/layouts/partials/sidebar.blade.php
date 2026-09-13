@@ -118,6 +118,15 @@
                         </a>
                     </li>
 
+                    <!-- Portal Karir Perusahaan -->
+                    <li class="nav-item {{ request()->routeIs('company-urls*') ? 'active' : '' }}">
+                        <a class="nav-link menu-link {{ request()->routeIs('company-urls*') ? 'active' : '' }}"
+                            href="{{ route('company-urls.index') }}">
+                            <i class="ri-global-line"></i>
+                            <span data-key="t-company-urls">Portal Karir PT</span>
+                        </a>
+                    </li>
+
                     <li class="menu-title"><span data-key="t-menu">Generator Dokumen</span></li>
                     <!-- Generator Dokumen -->
                     <li class="nav-item {{ request()->routeIs('cover-letter*') ? 'active' : '' }}">
