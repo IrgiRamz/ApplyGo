@@ -56,16 +56,16 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="company_name" class="form-label">Nama Perusahaan</label>
-                                        <input type="text" class="form-control" id="company_name" name="company_name"
-                                            value="{{ old('company_name') }}" placeholder="PT. Contoh Indonesia" required>
+                                        <label for="position" class="form-label">Posisi yang Dilamar</label>
+                                        <input type="text" class="form-control" id="position" name="position"
+                                            value="{{ old('position') }}" placeholder="Backend Developer" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="position" class="form-label">Posisi yang Dilamar</label>
-                                        <input type="text" class="form-control" id="position" name="position"
-                                            value="{{ old('position') }}" placeholder="Backend Developer" required>
+                                        <label for="company_name" class="form-label">Nama Perusahaan</label>
+                                        <input type="text" class="form-control" id="company_name" name="company_name"
+                                            value="{{ old('company_name') }}" placeholder="PT. Contoh Indonesia" required>
                                     </div>
                                 </div>
                             </div>
