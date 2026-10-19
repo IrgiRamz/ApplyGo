@@ -136,6 +136,16 @@
                             <span data-key="t-cover-letter">Generator Dokumen</span>
                         </a>
                     </li>
+
+                    <li class="menu-title"><span data-key="t-menu">Integrasi & Pengembang</span></li>
+                    <!-- Dokumentasi API -->
+                    <li class="nav-item">
+                        <a class="nav-link menu-link" href="{{ route('api.docs') }}" target="_blank">
+                            <i class="ri-code-box-line"></i>
+                            <span data-key="t-api-docs">Dokumentasi API</span>
+                            <span class="badge badge-pill bg-info ms-auto">Scalar</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

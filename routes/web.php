@@ -10,6 +10,7 @@ use App\Http\Controllers\CoverLetterController;
 use App\Http\Controllers\DocumentTemplateController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ApiTokenController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -37,6 +38,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile/update', [ProfileController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
+    // API Token Management (Sanctum)
+    Route::post('/profile/tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('/profile/tokens/{id}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
 
     // Pengaturan SMTP Email Pribadi (1-to-1)
     Route::get('/email-settings', [EmailSettingController::class, 'edit'])->name('email-settings.edit');
@@ -66,6 +71,11 @@ Route::middleware('auth')->group(function () {
 
     // Company Career URLs (Portal Karir Perusahaan)
     Route::resource('company-urls', CompanyUrlController::class)->except(['create', 'show', 'edit']);
+
+    // Dokumentasi API Interaktif (Scalar)
+    Route::get('/docs/api', function () {
+        return view('docs.scalar');
+    })->name('api.docs');
 
     // =============================================
     // Admin Exclusive Routes (Proteksi Middleware Kustom 'admin')

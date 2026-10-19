@@ -1,0 +1,303 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ApplyGo REST API Reference",
+    "description": "API Otomasi Pengiriman Lamaran Pekerjaan ApplyGo. Endpoint ini memungkinkan Anda mengirim berkas lamaran pekerjaan (termasuk CV PDF dan pesan terpersonalisasi) ke satu atau beberapa alamat email HRD sekaligus menggunakan akun SMTP pribadi Anda.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "ApplyGo Support",
+      "url": "http://localhost:8000"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current Server Environment"
+    }
+  ],
+  "paths": {
+    "/api/v1/job-applications/send": {
+      "post": {
+        "summary": "Kirim Lamaran Pekerjaan (Instant Send)",
+        "description": "Mengirim lamaran kerja baru secara langsung menggunakan konfigurasi SMTP, template email, dan CV PDF milik pengguna pemilik token. Mendukung pengiriman ke multi-email tujuan (dipisahkan koma).",
+        "operationId": "sendJobApplication",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobApplicationRequest"
+              },
+              "examples": {
+                "single_recipient": {
+                  "summary": "Contoh 1 Penerima Email",
+                  "value": {
+                    "company_name": "PT Maju Teknologi Indonesia",
+                    "job_position": "Senior Backend Developer",
+                    "company_email": "recruitment@majutekno.id",
+                    "subject": "Lamaran Pekerjaan - {posisi_pekerjaan} di {nama_perusahaan}"
+                  }
+                },
+                "multi_recipients": {
+                  "summary": "Contoh Lebih dari 1 Email Tujuan (Koma)",
+                  "value": {
+                    "company_name": "PT Unicorn Digital Nusantara",
+                    "job_position": "Fullstack Laravel Engineer",
+                    "company_email": "hrd@unicorndigital.com, talent@unicorndigital.com, user.tech@unicorndigital.com",
+                    "subject": "Lamaran Pekerjaan - Fullstack Laravel Engineer",
+                    "template_id": 1,
+                    "attachment_id": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lamaran pekerjaan berhasil dikirim ke server tujuan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "status": "success",
+                  "message": "Lamaran pekerjaan berhasil dikirim ke PT Unicorn Digital Nusantara!",
+                  "data": {
+                    "application_id": 45,
+                    "company_name": "PT Unicorn Digital Nusantara",
+                    "position": "Fullstack Laravel Engineer",
+                    "subject": "Lamaran Pekerjaan - Fullstack Laravel Engineer",
+                    "recipients": [
+                      "hrd@unicorndigital.com",
+                      "talent@unicorndigital.com",
+                      "user.tech@unicorndigital.com"
+                    ],
+                    "attachment": "CV_Backend_2026.pdf",
+                    "template": "Template Formal Indonesia",
+                    "sent_at": "2026-10-19T12:00:00+07:00"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Konfigurasi akun belum lengkap (misal: SMTP belum diisi).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "Pengaturan SMTP email Anda belum dikonfigurasi di dashboard ApplyGo. Harap lengkapi pengaturan SMTP terlebih dahulu."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer tidak valid atau tidak disertakan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "message": "Unauthenticated."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validasi payload atau format email gagal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "Format email 'recruitment-salah' tidak valid.",
+                  "errors": {
+                    "company_email": [
+                      "Format email 'recruitment-salah' tidak valid."
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Kesalahan server SMTP atau jaringan saat mengirim email.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "Gagal mengirim email melalui server SMTP: Connection timeout",
+                  "data": {
+                    "application_id": 45,
+                    "status": "failed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum Token",
+        "description": "Masukkan API Token Sanctum Anda (dapat dibuat di menu Profil Akun > Manajemen REST API Token)."
+      }
+    },
+    "schemas": {
+      "JobApplicationRequest": {
+        "type": "object",
+        "required": [
+          "company_name",
+          "job_position",
+          "company_email"
+        ],
+        "properties": {
+          "company_name": {
+            "type": "string",
+            "description": "Nama perusahaan / PT tujuan.",
+            "example": "PT Maju Teknologi Indonesia"
+          },
+          "job_position": {
+            "type": "string",
+            "description": "Posisi atau lowongan pekerjaan yang dilamar.",
+            "example": "Senior Backend Developer"
+          },
+          "company_email": {
+            "type": "string",
+            "description": "Alamat email tujuan. Jika ada lebih dari satu, pisahkan dengan tanda koma (,).",
+            "example": "hrd@majutekno.id, recruitment@majutekno.id"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subjek email. Mendukung placeholder {nama_perusahaan} dan {posisi_pekerjaan}. (Opsional)",
+            "example": "Lamaran Pekerjaan - {posisi_pekerjaan} - Irgi Ramadhan"
+          },
+          "template_id": {
+            "type": "integer",
+            "description": "ID template email milik user. Jika dikosongkan, sistem otomatis menggunakan template pertama milik Anda.",
+            "example": 1
+          },
+          "attachment_id": {
+            "type": "integer",
+            "description": "ID dokumen lampiran (CV PDF) milik user. Jika dikosongkan, sistem otomatis melampirkan berkas CV terbaru milik Anda.",
+            "example": 1
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Lamaran pekerjaan berhasil dikirim ke PT Unicorn Digital Nusantara!"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "application_id": {
+                "type": "integer",
+                "example": 45
+              },
+              "company_name": {
+                "type": "string",
+                "example": "PT Unicorn Digital Nusantara"
+              },
+              "position": {
+                "type": "string",
+                "example": "Fullstack Laravel Engineer"
+              },
+              "subject": {
+                "type": "string",
+                "example": "Lamaran Pekerjaan - Fullstack Laravel Engineer"
+              },
+              "recipients": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "hrd@unicorndigital.com",
+                  "recruitment@unicorndigital.com"
+                ]
+              },
+              "attachment": {
+                "type": "string",
+                "nullable": true,
+                "example": "CV_Backend_2026.pdf"
+              },
+              "template": {
+                "type": "string",
+                "example": "Template Formal Indonesia"
+              },
+              "sent_at": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-10-19T12:00:00+07:00"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Terjadi kesalahan saat memproses permintaan."
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Validasi payload gagal."
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
