@@ -72,10 +72,7 @@ Route::middleware('auth')->group(function () {
     // Company Career URLs (Portal Karir Perusahaan)
     Route::resource('company-urls', CompanyUrlController::class)->except(['create', 'show', 'edit']);
 
-    // Dokumentasi API Interaktif (Scalar)
-    Route::get('/docs/api', function () {
-        return view('docs.scalar');
-    })->name('api.docs');
+
 
     // =============================================
     // Admin Exclusive Routes (Proteksi Middleware Kustom 'admin')
@@ -85,3 +82,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', UserController::class);
     });
 });
+
+// Dokumentasi API Interaktif (Scalar)
+Route::get('/docs/api', function () {
+    return view('docs.scalar');
+})->name('api.docs');
