@@ -10,6 +10,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+    Route::get('/job-applications', [JobApplicationApiController::class, 'index']);
     Route::post('/job-applications/send', [JobApplicationApiController::class, 'send']);
 });
 

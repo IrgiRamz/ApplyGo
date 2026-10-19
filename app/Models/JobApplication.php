@@ -17,6 +17,7 @@ class JobApplication extends Model
         'status',
         'scheduled_at',
         'error_message',
+        'idempotency_key',
     ];
 
     public function getCompanyEmailAttribute(): string

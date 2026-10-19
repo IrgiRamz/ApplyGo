@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ApplyGo REST API Reference",
-    "description": "API Otomasi Pengiriman Lamaran Pekerjaan ApplyGo. Endpoint ini memungkinkan Anda mengirim berkas lamaran pekerjaan (termasuk CV PDF dan pesan terpersonalisasi) ke satu atau beberapa alamat email HRD sekaligus menggunakan akun SMTP pribadi Anda.",
-    "version": "1.0.0",
+    "description": "API Otomasi Pengiriman Lamaran Pekerjaan ApplyGo untuk AI Agent & Aplikasi Pihak Ketiga. Mendukung pengecekan riwayat, mode dry-run simulasi, proteksi idempotency key, deduplikasi lamaran ganda, dan pembatasan kuota harian.",
+    "version": "1.1.0",
     "contact": {
       "name": "ApplyGo Support",
       "url": "http://localhost:8000"
@@ -16,14 +16,111 @@
     }
   ],
   "paths": {
+    "/api/v1/job-applications": {
+      "get": {
+        "summary": "Cek Riwayat Lamaran Pekerjaan",
+        "description": "Mengambil daftar riwayat lamaran yang pernah dikirim oleh pengguna pemilik token. Berguna bagi AI Agent untuk mengecek apakah posisi di perusahaan tertentu sudah pernah dilamar sebelum mengirim request baru.",
+        "operationId": "getJobApplications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "company_email",
+            "in": "query",
+            "required": false,
+            "description": "Filter berdasarkan sebagian atau seluruh alamat email perusahaan.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "recruitment@majutekno.id"
+          },
+          {
+            "name": "job_position",
+            "in": "query",
+            "required": false,
+            "description": "Filter berdasarkan nama posisi/lowongan kerja.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Backend Developer"
+          },
+          {
+            "name": "company_name",
+            "in": "query",
+            "required": false,
+            "description": "Filter berdasarkan nama perusahaan.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PT Maju"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter berdasarkan status pengiriman (sent, failed, pending).",
+            "schema": {
+              "type": "string",
+              "enum": ["sent", "failed", "pending"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Batas jumlah data per halaman (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar riwayat lamaran berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobApplicationListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/job-applications/send": {
       "post": {
-        "summary": "Kirim Lamaran Pekerjaan (Instant Send)",
-        "description": "Mengirim lamaran kerja baru secara langsung menggunakan konfigurasi SMTP, template email, dan CV PDF milik pengguna pemilik token. Mendukung pengiriman ke multi-email tujuan (dipisahkan koma).",
+        "summary": "Kirim Lamaran Pekerjaan (Instant Send / Dry-Run)",
+        "description": "Mengirim lamaran kerja baru secara langsung menggunakan konfigurasi SMTP, template email, dan CV PDF milik pengguna pemilik token. Dilengkapi opsi `dry_run` untuk simulasi tanpa kirim email, `idempotency_key` untuk mencegah eksekusi berulang, dan proteksi duplikasi 7 hari.",
         "operationId": "sendJobApplication",
         "security": [
           {
             "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Kunci idempotensi opsional via HTTP Header (alternatif dari field JSON idempotency_key).",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -34,24 +131,24 @@
                 "$ref": "#/components/schemas/JobApplicationRequest"
               },
               "examples": {
-                "single_recipient": {
-                  "summary": "Contoh 1 Penerima Email",
+                "dry_run_simulation": {
+                  "summary": "Mode Dry-Run (Simulasi AI Agent)",
                   "value": {
                     "company_name": "PT Maju Teknologi Indonesia",
                     "job_position": "Senior Backend Developer",
                     "company_email": "recruitment@majutekno.id",
-                    "subject": "Lamaran Pekerjaan - {posisi_pekerjaan} di {nama_perusahaan}"
+                    "dry_run": true
                   }
                 },
-                "multi_recipients": {
-                  "summary": "Contoh Lebih dari 1 Email Tujuan (Koma)",
+                "real_send_idempotent": {
+                  "summary": "Pengiriman Nyata dengan Idempotency Key",
                   "value": {
                     "company_name": "PT Unicorn Digital Nusantara",
                     "job_position": "Fullstack Laravel Engineer",
-                    "company_email": "hrd@unicorndigital.com, talent@unicorndigital.com, user.tech@unicorndigital.com",
+                    "company_email": "hrd@unicorndigital.com, talent@unicorndigital.com",
                     "subject": "Lamaran Pekerjaan - Fullstack Laravel Engineer",
-                    "template_id": 1,
-                    "attachment_id": 1
+                    "idempotency_key": "apply_goto_20261019_001",
+                    "dry_run": false
                   }
                 }
               }
@@ -60,28 +157,54 @@
         },
         "responses": {
           "200": {
-            "description": "Lamaran pekerjaan berhasil dikirim ke server tujuan.",
+            "description": "Lamaran pekerjaan berhasil dikirim (atau validasi dry-run sukses).",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SuccessResponse"
                 },
-                "example": {
-                  "status": "success",
-                  "message": "Lamaran pekerjaan berhasil dikirim ke PT Unicorn Digital Nusantara!",
-                  "data": {
-                    "application_id": 45,
-                    "company_name": "PT Unicorn Digital Nusantara",
-                    "position": "Fullstack Laravel Engineer",
-                    "subject": "Lamaran Pekerjaan - Fullstack Laravel Engineer",
-                    "recipients": [
-                      "hrd@unicorndigital.com",
-                      "talent@unicorndigital.com",
-                      "user.tech@unicorndigital.com"
-                    ],
-                    "attachment": "CV_Backend_2026.pdf",
-                    "template": "Template Formal Indonesia",
-                    "sent_at": "2026-10-19T12:00:00+07:00"
+                "examples": {
+                  "real_send_success": {
+                    "summary": "Pengiriman Nyata Berhasil",
+                    "value": {
+                      "success": true,
+                      "message": "Lamaran pekerjaan berhasil dikirim ke PT Unicorn Digital Nusantara!",
+                      "dry_run": false,
+                      "data": {
+                        "application_id": 45,
+                        "company_name": "PT Unicorn Digital Nusantara",
+                        "position": "Fullstack Laravel Engineer",
+                        "subject": "Lamaran Pekerjaan - Fullstack Laravel Engineer",
+                        "recipients": [
+                          "hrd@unicorndigital.com",
+                          "talent@unicorndigital.com"
+                        ],
+                        "attachment": "CV_Backend_2026.pdf",
+                        "template": "Template Formal Indonesia",
+                        "idempotency_key": "apply_goto_20261019_001",
+                        "sent_at": "2026-10-19T14:55:00+07:00"
+                      }
+                    }
+                  },
+                  "dry_run_success": {
+                    "summary": "Simulasi Dry-Run Berhasil",
+                    "value": {
+                      "success": true,
+                      "message": "[DRY RUN] Validasi dan simulasi pengiriman berhasil. Email tidak dikirim.",
+                      "dry_run": true,
+                      "data": {
+                        "company_name": "PT Maju Teknologi Indonesia",
+                        "job_position": "Senior Backend Developer",
+                        "recipients": ["recruitment@majutekno.id"],
+                        "subject": "Lamaran Pekerjaan - Senior Backend Developer",
+                        "template_id": 1,
+                        "template_title": "Template Formal Indonesia",
+                        "attachment_id": 1,
+                        "attachment_name": "CV_Backend_2026.pdf",
+                        "idempotency_key": null,
+                        "preview_body": "Halo HRD,\n\nBerikut berkas lamaran saya untuk posisi Senior Backend Developer di PT Maju Teknologi Indonesia."
+                      }
+                    }
                   }
                 }
               }
@@ -95,7 +218,7 @@
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "status": "error",
+                  "success": false,
                   "message": "Pengaturan SMTP email Anda belum dikonfigurasi di dashboard ApplyGo. Harap lengkapi pengaturan SMTP terlebih dahulu."
                 }
               }
@@ -114,6 +237,25 @@
               }
             }
           },
+          "409": {
+            "description": "Konflik Idempotency Key atau Duplikasi Pengiriman dalam 7 hari.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Lamaran dengan idempotency_key ini sudah pernah diproses sebelumnya.",
+                  "data": {
+                    "existing_application_id": 45,
+                    "status": "sent",
+                    "sent_at": "2026-10-19T14:55:00+07:00"
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validasi payload atau format email gagal.",
             "content": {
@@ -122,12 +264,31 @@
                   "$ref": "#/components/schemas/ValidationErrorResponse"
                 },
                 "example": {
-                  "status": "error",
+                  "success": false,
                   "message": "Format email 'recruitment-salah' tidak valid.",
                   "errors": {
                     "company_email": [
                       "Format email 'recruitment-salah' tidak valid."
                     ]
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas kuota harian pengiriman email telah tercapai (maksimal 20 lamaran/hari).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Batas kuota harian pengiriman email telah tercapai (maksimal 20 lamaran/hari). Coba lagi besok.",
+                  "meta": {
+                    "daily_limit": 20,
+                    "used_today": 20,
+                    "resets_at": "2026-10-20T00:00:00+07:00"
                   }
                 }
               }
@@ -141,7 +302,7 @@
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "status": "error",
+                  "success": false,
                   "message": "Gagal mengirim email melalui server SMTP: Connection timeout",
                   "data": {
                     "application_id": 45,
@@ -190,98 +351,149 @@
           },
           "subject": {
             "type": "string",
-            "description": "Subjek email. Mendukung placeholder {nama_perusahaan} dan {posisi_pekerjaan}. (Opsional)",
+            "description": "Subjek email kustom (opsional). Mendukung placeholder {nama_perusahaan} dan {posisi_pekerjaan}.",
             "example": "Lamaran Pekerjaan - {posisi_pekerjaan} - Irgi Ramadhan"
           },
           "template_id": {
             "type": "integer",
-            "description": "ID template email milik user. Jika dikosongkan, sistem otomatis menggunakan template pertama milik Anda.",
+            "description": "ID template email milik user (opsional). Jika kosong, sistem menggunakan template default.",
             "example": 1
           },
           "attachment_id": {
             "type": "integer",
-            "description": "ID dokumen lampiran (CV PDF) milik user. Jika dikosongkan, sistem otomatis melampirkan berkas CV terbaru milik Anda.",
+            "description": "ID dokumen CV PDF milik user (opsional). Jika kosong, sistem melampirkan berkas CV terbaru.",
             "example": 1
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Jika bernilai true, sistem hanya memvalidasi dan mensimulasikan pengiriman tanpa mengirim email nyata dan tanpa memotong kuota harian.",
+            "default": false,
+            "example": false
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Kunci unik dari AI Agent (misal hash ID) untuk mencegah request ganda diproses ulang dalam kurun 30 hari.",
+            "example": "ai_agent_hash_9823471"
+          }
+        }
+      },
+      "JobApplicationListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Daftar riwayat lamaran berhasil diambil."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 12
+                },
+                "company_name": {
+                  "type": "string",
+                  "example": "PT Maju Teknologi"
+                },
+                "position": {
+                  "type": "string",
+                  "example": "Backend Developer"
+                },
+                "recipient_email": {
+                  "type": "string",
+                  "example": "recruitment@majutekno.id"
+                },
+                "status": {
+                  "type": "string",
+                  "example": "sent"
+                },
+                "idempotency_key": {
+                  "type": "string",
+                  "nullable": true,
+                  "example": "ai_agent_hash_9823471"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-10-19T14:30:00+07:00"
+                }
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "current_page": {
+                "type": "integer",
+                "example": 1
+              },
+              "last_page": {
+                "type": "integer",
+                "example": 1
+              },
+              "per_page": {
+                "type": "integer",
+                "example": 20
+              },
+              "total": {
+                "type": "integer",
+                "example": 1
+              }
+            }
           }
         }
       },
       "SuccessResponse": {
         "type": "object",
         "properties": {
-          "status": {
-            "type": "string",
-            "example": "success"
+          "success": {
+            "type": "boolean",
+            "example": true
           },
           "message": {
             "type": "string",
             "example": "Lamaran pekerjaan berhasil dikirim ke PT Unicorn Digital Nusantara!"
           },
+          "dry_run": {
+            "type": "boolean",
+            "example": false
+          },
           "data": {
-            "type": "object",
-            "properties": {
-              "application_id": {
-                "type": "integer",
-                "example": 45
-              },
-              "company_name": {
-                "type": "string",
-                "example": "PT Unicorn Digital Nusantara"
-              },
-              "position": {
-                "type": "string",
-                "example": "Fullstack Laravel Engineer"
-              },
-              "subject": {
-                "type": "string",
-                "example": "Lamaran Pekerjaan - Fullstack Laravel Engineer"
-              },
-              "recipients": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "example": [
-                  "hrd@unicorndigital.com",
-                  "recruitment@unicorndigital.com"
-                ]
-              },
-              "attachment": {
-                "type": "string",
-                "nullable": true,
-                "example": "CV_Backend_2026.pdf"
-              },
-              "template": {
-                "type": "string",
-                "example": "Template Formal Indonesia"
-              },
-              "sent_at": {
-                "type": "string",
-                "format": "date-time",
-                "example": "2026-10-19T12:00:00+07:00"
-              }
-            }
+            "type": "object"
           }
         }
       },
       "ErrorResponse": {
         "type": "object",
         "properties": {
-          "status": {
-            "type": "string",
-            "example": "error"
+          "success": {
+            "type": "boolean",
+            "example": false
           },
           "message": {
             "type": "string",
             "example": "Terjadi kesalahan saat memproses permintaan."
+          },
+          "data": {
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
           }
         }
       },
       "ValidationErrorResponse": {
         "type": "object",
         "properties": {
-          "status": {
-            "type": "string",
-            "example": "error"
+          "success": {
+            "type": "boolean",
+            "example": false
           },
           "message": {
             "type": "string",
