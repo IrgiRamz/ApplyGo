@@ -39,7 +39,8 @@ class AuthController extends Controller
             'password' => $request->input('password'),
         ];
 
-        $remember = $request->boolean('remember');
+        // Otomatis aktifkan "Remember Me" agar sesi bertahan 1 bulan (30 hari)
+        $remember = true;
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
